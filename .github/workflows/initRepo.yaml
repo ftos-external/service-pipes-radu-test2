@@ -1,0 +1,122 @@
+name: Setup repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      client_name:
+        description: 'Client name. Try to keep it short but self explanatory.'
+        required: true
+      artifact_version:
+        description: 'Artifact initial version. It will get concatenated with SNAPSHOT automatically '
+        required: true
+        default: 0.0.1
+      service_pipes_dependencies_version:
+        description: 'This is the service-pipes-dependencies artifact version.'
+        required: true
+      service_pipes_version:
+        description: 'This is the service-pipes-core artifact version.'
+        required: true
+      notification_service_version:
+        description: 'This is the idp-notification-service artifact version.'
+        required: true
+
+
+jobs:
+  check:
+    name: Check if repo is template
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Do not run scaffolding on template repository
+        shell: bash
+        # Using the GitHub rest API allows us to identify if the current repository
+        # is a template repository or not.
+        run: |
+          curl --silent -X GET \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.baptiste-preview+json" \
+            https://api.github.com/repos/$GITHUB_REPOSITORY \
+            | jq --exit-status '.is_template == false';
+  setup:
+    name: Reinitialize repository
+    runs-on: ubuntu-22.04
+    needs: [check]
+    steps:
+      - name: Get Token
+        id: get_workflow_token
+        uses: ftos-forks/workflow-application-token-action@v1
+        with:
+          application_id: ${{ secrets.FTOS_WORKFLOWS_APP_ID }}
+          application_private_key: ${{ secrets.FTOS_WORKFLOWS_APP_PRIVATE_KEY }}
+
+      - uses: ftos-forks/checkout@v3
+        name: Checkout repo
+        with:
+          # Comminting workflow files using the regular GITHUB_TOKEN will fail with
+          # `Git Error: Refusing to allow a GitHub App to create or update workflow without workflows permission`.
+          # This is by design to prevent third-parties from adding malicious workflow files.
+          #
+          # Generate a new personal access token with the workflow `scope` does the trick.
+          # Checkout my blog post https://stefanbuck.com/blog for alternative options
+          token: ${{ steps.get_workflow_token.outputs.token }}
+
+      - name: EnvSubstitution in template file
+        env:
+          USERNAME: ${{ github.actor }}
+          EMAIL:  "fitechos_template@fintechos.com"
+          CLIENT_NAME: ${{github.event.inputs.client_name}}
+          ARTIFACT_VERSION: ${{github.event.inputs.artifact_version}}
+          SERVICE_PIPES_DEPENDENCY_VERSION: ${{github.event.inputs.service_pipes_dependencies_version}}
+          SERVICE_PIPES_VERSION: ${{github.event.inputs.service_pipes_version}}
+          NOTIFICATION_SERVICE_VERSION: ${{github.event.inputs.notification_service_version}}
+          ORGANIZATION: ${{ vars.ORGANIZATION }}
+          SERVICE_PIPES_FEED: ${{ secrets.SERVICE_PIPES_FEED }}
+          
+        working-directory: template
+        run: envsubst < cookiecutter.json.template > cookiecutter.json
+
+      - name: Install Cookiecutter
+        run: sudo apt-get install cookiecutter
+
+      - name: Scaffolding repository
+        run: |
+          cookiecutter ./template/ --no-input -v
+
+      - name: Prepare root directory
+        shell: bash
+        # Remove all files and folder exepct .git/ and cookiecutter-temp/
+        run: |
+          find ./ -maxdepth 1 \
+          ! -name '.git' \
+          ! -name 'repo_temp' \
+          ! -name '.' \
+          ! -exec rm -rf {} +
+      - name: Move files to root
+        # We want to move all the project files into the root
+        # directory so we can reinitialize git in the next step
+        run: |
+          shopt -s dotglob
+          sudo mv ./repo_temp/* .
+          sudo rm -r ./repo_temp/
+          
+      - name: Remove Branch Protection Rules
+        uses: fintechos-com/branch-protection-rules@0.4.0
+        with:
+          repository: ${{ github.event.repository.name }}
+          token: ${{ steps.get_workflow_token.outputs.token }}
+          list_of_status_checks: '"Enforce rules"'
+          branch: 'main'
+          template: true
+          owner: ${{ vars.ORGANIZATION }}
+
+      - name: Reinitialize git repository
+        shell: bash
+        # Reinitialize git after scaffolding this repository.
+        # We use `git checkout --orphan` to create a branch in a git init-like state.
+        # By force pushing this as `main` we end up with a new clean git history.
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com" && \
+          git config --global user.name "github-actions[bot]" && \
+          git checkout --orphan temp-branch && \
+          git add . && \
+          git commit -m 'Initial commit' && \
+          git push origin temp-branch:main -f

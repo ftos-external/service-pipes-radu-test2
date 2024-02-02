@@ -1,0 +1,10 @@
+_extends: github-configs #https://github.com/fintechos-com/github-configs/blob/main/.github/settings.yml
+
+branches:
+  - name: main
+    protection:
+      required_status_checks:
+        # Required. Require branches to be up to date before merging.
+        strict: false
+        # Required. The list of status checks to require in order to merge into this branch
+        contexts: [setup]

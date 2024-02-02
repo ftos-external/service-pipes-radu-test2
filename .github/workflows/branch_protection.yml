@@ -1,0 +1,30 @@
+name: Branch Protection Enforcer
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Enforce rules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Token
+        id: get_workflow_token
+        uses: ftos-forks/workflow-application-token-action@v1
+        with:
+          application_id: ${{ secrets.FTOS_WORKFLOWS_APP_ID }}
+          application_private_key: ${{ secrets.FTOS_WORKFLOWS_APP_PRIVATE_KEY }}
+
+      - name: Set Branch Protection Rules
+        uses: fintechos-com/branch-protection-rules@0.2.1
+        with:
+          owner: ${{ github.repository_owner }}
+          repository: ${{ github.event.repository.name }}
+          token: ${{ steps.get_workflow_token.outputs.token }}
+          list_of_status_checks: '"Enforce rules"'
+          branch: 'main'

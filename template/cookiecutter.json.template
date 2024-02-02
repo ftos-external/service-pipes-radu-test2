@@ -1,0 +1,17 @@
+{
+    "author_name": "${USERNAME}",
+    "author_email": "${EMAIL}",
+    "group_id": "com.fintechos.servicepipes",
+    "client_pipes_name": "${CLIENT_NAME}",
+    "client_pipe_artifact_version": "${ARTIFACT_VERSION}",
+    "client_pipe_artifactId": "service-pipes-{{ cookiecutter.client_pipes_name|lower()|replace(' ', '-') }}",
+    "service_pipes_package": "{{ cookiecutter.group_id }}",
+    "service_pipes_package_dir": "{{ cookiecutter.service_pipes_package|replace('.', '/') }}",
+    "service_pipes_client_package": "{{ cookiecutter.client_pipes_name|lower|replace('-', '.')|replace('_', '.')|replace(' ', '.') }}",
+    "service_pipes_slug": "repo_temp",
+    "service_pipes_dependencies_version": "${SERVICE_PIPES_DEPENDENCY_VERSION}",
+    "service_pipes_version": "${SERVICE_PIPES_VERSION}",
+    "notification_service_version": "${NOTIFICATION_SERVICE_VERSION}",
+    "organization": "${ORGANIZATION}",
+    "service_pipes_feed": "${SERVICE_PIPES_FEED}"
+}

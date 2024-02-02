@@ -1,0 +1,53 @@
+name: Sonarqube Maven scan
+{% raw -%}
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  push:
+    branches:
+      - main
+
+env:
+  MAVEN_USERNAME: ${{ secrets.MAVEN_REPO_USERNAME }}
+  MAVEN_CENTRAL_TOKEN: ${{ secrets.MAVEN_REPO_PASSWORD }}
+  GITHUB_ACTOR: ${{ github.actor }}
+  GITHUB_TOKEN: ${{ github.token }}
+  SONARQUBE_URL: ${{ secrets.SONARQUBE_SVC }}
+
+jobs:
+  scan:
+    runs-on: [self-hosted, linux]
+
+    steps:
+      - uses: ftos-forks/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Set up Azure Devops Maven
+        uses: ftos-forks/setup-java@v3
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+
+      - name: Set up Maven
+        uses: ftos-forks/setup-maven@v4.5
+        with:
+          maven-version: 3.8.2
+
+      - name: Cache local Maven repository
+        uses: ftos-forks/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: SonarQube Scan with coverage
+        run: mvn clean verify sonar:sonar -Dsonar.login="${{ secrets.SONARQUBE_TOKEN }}" -s $GITHUB_WORKSPACE/.github/config/maven-settings.xml
+  {%- endraw %}

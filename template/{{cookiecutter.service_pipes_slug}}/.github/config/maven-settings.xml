@@ -1,0 +1,57 @@
+{% raw -%}
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <profiles>
+        <profile>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <id>service-pipes</id>
+            <repositories>
+                <repository>
+                    <id>service-pipes</id>
+                    <url>{%- endraw %}{{cookiecutter.service_pipes_feed}}{% raw -%}</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </repository>
+            </repositories>
+        </profile>
+        <profile>
+            <id>sonar</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <sonar.host.url>
+                    ${env.SONARQUBE_URL}
+                </sonar.host.url>
+            </properties>
+        </profile>
+    </profiles>
+    <pluginGroups>
+        <pluginGroup>org.sonarsource.scanner.maven</pluginGroup>
+    </pluginGroups>
+    <servers>
+        <server>
+            <id>service-pipes</id>
+            <username>${env.MAVEN_USERNAME}</username>
+            <password>${env.MAVEN_CENTRAL_TOKEN}</password>
+        </server>
+        <server>
+            <id>acrcloudservices.azurecr.io</id>
+            <username>${env.DOCKER_USER}</username>
+            <password>${env.DOCKER_PASS}</password>
+        </server>
+        <server>
+            <id>github</id>
+            <username>${env.GITHUB_ACTOR}</username>
+            <password>${env.GITHUB_TOKEN}</password>
+        </server>
+    </servers>
+</settings>
+{%- endraw %}

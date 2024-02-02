@@ -1,0 +1,111 @@
+name: Package and deploy Docker Images
+{% raw -%}
+on:
+  push:
+    branches-ignore:
+      - 'dependabot/**'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Perform release
+        type: boolean
+        required: true
+        default: false
+      releaseVersion:
+        description: "Default version to use when preparing a release. Leave blank for auto minor increase. E.G. X.Y.Z"
+        required: false
+        default: ""
+      developmentVersion:
+        description: "Default version to use for new local working copy, mandatory if releaseVersion is not null. E.G. X.Y.Z-SNAPSHOT"
+        required: false
+        default: ""
+
+env:
+  MAVEN_USERNAME: ${{ secrets.MAVEN_REPO_USERNAME }}
+  MAVEN_CENTRAL_TOKEN: ${{ secrets.MAVEN_REPO_PASSWORD }}
+  GITHUB_ACTOR: ${{ github.actor }}
+  GITHUB_TOKEN: ${{ github.token }}
+  DOCKER_USER: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
+  DOCKER_PASS: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
+
+jobs:
+  build:
+    if: ${{  github.event.inputs.release == 'false' || github.event_name == 'push' || github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: ftos-forks/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Set up Azure Devops Maven
+        uses: ftos-forks/setup-java@v3
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+
+      - name: Cache local Maven repository
+        uses: ftos-forks/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build
+        run: mvn clean --fail-fast -T1C test -U -s $GITHUB_WORKSPACE/.github/config/maven-settings.xml
+
+      - name: Deploy to docker repository
+        if: ${{ github.actor != 'dependabot[bot]' && (github.event_name != 'push' || github.ref == 'refs/heads/main') }}
+        run: mvn --fail-fast -T1C package -DskipTests=true spring-boot:repackage  -P 'remote,docker-build'  -U -s $GITHUB_WORKSPACE/.github/config/maven-settings.xml
+
+
+  release:
+    if: ${{  github.event.inputs.release == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ftos-forks/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Set up Azure Devops Maven
+        uses: ftos-forks/setup-java@v3
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+
+      - name: Configure Git user
+        env:
+          TOKEN: ${{ secrets.PAT_MAZ_DCS_PACKAGES }}
+        run: |
+          git config --global url."https://${TOKEN}@github.com/".insteadOf "https://github.com/"
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+      - name: Prepare Release with autoversioning
+        if: ${{ github.event.inputs.releaseVersion == '' || github.event.inputs.developmentVersion  == '' }}
+        run: mvn clean --fail-fast -T1C -e release:prepare -B -P 'remote,docker-release' -Dresume=false -DautoVersionSubmodules=true -s $GITHUB_WORKSPACE/.github/config/maven-settings.xml
+
+      - name: Prepare Release with predefined versioning
+        if: ${{ github.event.inputs.releaseVersion != '' && github.event.inputs.developmentVersion  != '' }}
+        run: mvn clean --fail-fast -T1C -e release:prepare -B -P 'remote,docker-release' -Dresume=false -DautoVersionSubmodules=true -s $GITHUB_WORKSPACE/.github/config/maven-settings.xml -DreleaseVersion=${{ github.event.inputs.releaseVersion }} -DdevelopmentVersion=${{ github.event.inputs.developmentVersion }}
+
+  build-next-snapshot:
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: ftos-forks/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Set up Azure Devops Maven
+        uses: ftos-forks/setup-java@v3
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+      - name: Build and deploy to docker repository
+        run: mvn clean --fail-fast -T1C package spring-boot:repackage -P 'remote,docker-build'  -U -s $GITHUB_WORKSPACE/.github/config/maven-settings.xml
+{%- endraw %}
