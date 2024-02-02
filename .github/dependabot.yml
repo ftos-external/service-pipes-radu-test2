@@ -1,0 +1,47 @@
+# Basic set up for three package managers
+version: 2
+registries:
+  maven-artifactory:
+    type: maven-repository
+    url: https://pkgs.dev.azure.com/FintechOS-ManagedServices/_packaging/service-pipes/maven/v1
+    username: ${{secrets.MAVEN_REPO_USERNAME}}
+    password: ${{secrets.MAVEN_REPO_PASSWORD}}
+updates:
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    reviewers:
+      - "fintechos-com/devops"
+    labels:
+      - "dependencies"
+    schedule:
+      interval: "daily"
+    commit-message:
+      prefix: "github-actions"
+      include: "scope"
+  # Maintain dependencies for Maven
+  - package-ecosystem: "maven"
+    directory: "/"
+    labels:
+      - "dependencies"
+    registries:
+      - "maven-artifactory"
+    schedule:
+      interval: "daily"
+    commit-message:
+      prefix: "maven"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Maintain dependencies for docker
+  - package-ecosystem: "docker"
+    directory: "/"
+    reviewers:
+      - "fintechos-com/devops"
+    labels:
+      - "dependencies"
+    schedule:
+      interval: "daily"
+    commit-message:
+      prefix: "docker"
+      include: "scope"

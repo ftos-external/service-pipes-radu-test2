@@ -1,0 +1,37 @@
+name: Mend Maven scan
+on:
+  pull_request:
+    branches:
+      - main
+      - release/**
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  push:
+    branches:
+      - main
+      - release/**
+
+jobs:
+  whitesource-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ftos-forks/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Run Mend scan
+        uses: fintechos-com/whitesource-action@0.8.0
+        with:
+          framework: 'java'
+          java_version: 17
+          WS_APIKEY: ${{ secrets.WSS_API_KEY }}
+          WS_USERKEY: ${{ secrets.WSS_USER_KEY }}
+          WS_PRODUCTNAME: ${{github.event.repository.name}}
+          WS_PROJECTNAME: BUILD_${{github.ref}}_ghaction
+          MAVEN_REPO_USERNAME: ${{ secrets.MAVEN_REPO_USERNAME }}
+          MAVEN_REPO_PASSWORD: ${{ secrets.MAVEN_REPO_PASSWORD }}
+          maven-additional-goals: '-DskipTests=true'
+          WS_INCLUDES: '**/*.jar **/*.war **/*.ear'
