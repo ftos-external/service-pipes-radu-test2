@@ -47,7 +47,7 @@ jobs:
           java-version: '17'
 
       - name: Cache local Maven repository
-        uses: ftos-forks/cache@v2
+        uses: ftos-forks/cache@v3
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
