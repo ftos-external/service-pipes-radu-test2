@@ -10,7 +10,7 @@
             <repositories>
                 <repository>
                     <id>service-pipes</id>
-                    <url></url>
+                    <url>https://pkgs.dev.azure.com/FintechOS-ManagedServices/ftos-cloud-operations/_packaging/external-service-pipes-radu-test2/maven/v1</url>
                     <releases>
                         <enabled>true</enabled>
                     </releases>
