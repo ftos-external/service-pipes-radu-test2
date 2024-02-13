@@ -15,7 +15,7 @@
         <tag>head</tag>
     </scm>
     <properties>
-        <service.pipes.version>1.6.3</service.pipes.version>
+        <service.pipes.version>1.6.2</service.pipes.version>
         <notification.service.version>2.0.0</notification.service.version>
         <docker-repository>acrcloudservices.azurecr.io</docker-repository>
     </properties>
