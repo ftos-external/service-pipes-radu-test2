@@ -1,4 +1,4 @@
-FROM bellsoft/liberica-openjdk-alpine:17
+FROM bellsoft/liberica-openjdk-alpine:22
 ARG JAR_FILE
 COPY ${JAR_FILE} /home/site/wwwroot/app.jar
 
